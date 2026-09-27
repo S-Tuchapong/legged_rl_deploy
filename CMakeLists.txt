@@ -25,10 +25,6 @@ endif()
 # 2️⃣ 依赖
 ##############################
 
-find_package(unitree_lowlevel REQUIRED)
-find_package(legged_base REQUIRED)
-find_package(ZLIB REQUIRED)
-find_package(Torch QUIET)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
@@ -40,6 +36,13 @@ rosidl_generate_interfaces(${interfaces_target}
   "msg/DeployStatus.msg"
   LIBRARY_NAME ${PROJECT_NAME}
 )
+
+# Generate ROS Python extensions before Pinocchio/eigenpy changes the legacy
+# Python variables (including PYTHON_SOABI, which uses a different dot prefix).
+find_package(unitree_lowlevel REQUIRED)
+find_package(legged_base REQUIRED)
+find_package(ZLIB REQUIRED)
+find_package(Torch QUIET)
 
 ##############################
 # 3️⃣ 创建库（导出给上游用）

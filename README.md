@@ -147,11 +147,24 @@ Then build:
 ```bash
 cd unitree_ws
 source /opt/ros/<ros-distro>/setup.bash
-colcon build --packages-up-to legged_rl_deploy --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
+colcon build --packages-up-to legged_rl_deploy --cmake-args \
+  -DPython3_EXECUTABLE=/usr/bin/python3 \
+  -DPython_EXECUTABLE=/usr/bin/python3 \
+  -DPYTHON_EXECUTABLE=/usr/bin/python3
 source install/setup.bash
 ```
 
-> Note: The explicit `Python3_EXECUTABLE` avoids clean-build failures when `python3` points to a Conda environment without the ROS build dependencies.
+> Note: Set all three Python executable variables to the same system interpreter.
+> Pinocchio/eigenpy and Humble's ROS message generators use different CMake
+> Python modules; setting only `Python3_EXECUTABLE` can leave
+> `PYTHON_EXECUTABLE` empty. This also avoids selecting a Conda environment
+> without the ROS build dependencies.
+
+The VS Code Build task supports `humble -> Release`. It sources ROS directly
+without running the controller's network setup or requiring an existing
+workspace installation. It uses symlink installation, one package at a time,
+and two compiler jobs by default; set `CMAKE_BUILD_PARALLEL_LEVEL` to override
+the compiler limit.
 
 ## Running
 

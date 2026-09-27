@@ -86,9 +86,13 @@
       "args": [
         "scripts/run.sh",
         "lo", "${input:RosDistro}",
-        "colcon", "build", "--event-handlers", "console_direct+",
+        "colcon", "build", "--symlink-install", "--executor", "sequential",
+        "--event-handlers", "console_direct+",
         "--packages-up-to", "legged_rl_deploy",
-        "--cmake-args", "-DCMAKE_BUILD_TYPE=${input:BuildType}", "-DPython3_EXECUTABLE=/usr/bin/python3"
+        "--cmake-args", "-DCMAKE_BUILD_TYPE=${input:BuildType}",
+        "-DPython3_EXECUTABLE=/usr/bin/python3",
+        "-DPython_EXECUTABLE=/usr/bin/python3",
+        "-DPYTHON_EXECUTABLE=/usr/bin/python3"
       ],
       "group": "build",
       "options": { "cwd": "${workspaceFolder}" },
