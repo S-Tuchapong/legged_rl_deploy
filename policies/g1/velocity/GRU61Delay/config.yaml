@@ -1,0 +1,210 @@
+# TemporalV1 GRU61Delay: policy interface only; original hardware gains/settings retained.
+llc_config_file: src/unitree_lowlevel/config/g1.yaml
+ll_dt: 0.005
+policy:
+  backend: ort
+  model_path: src/legged_rl_deploy/policies/g1/velocity/GRU61Delay/bidirect_GRU61Delay.onnx
+  input_dim: 2867
+  output_dim: 12
+  policy_dt: 0.02
+  joint_ids_map:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  stiffness:
+  - 40.2
+  - 99.1
+  - 40.2
+  - 99.1
+  - 28.5
+  - 28.5
+  - 40.2
+  - 99.1
+  - 40.2
+  - 99.1
+  - 28.5
+  - 28.5
+  damping:
+  - 2.6
+  - 6.3
+  - 2.6
+  - 6.3
+  - 1.8
+  - 1.8
+  - 2.6
+  - 6.3
+  - 2.6
+  - 6.3
+  - 1.8
+  - 1.8
+  commands:
+    base_velocity:
+      process_order:
+      - clip
+      min:
+      - -0.8
+      - 0.0
+      - -1.0
+      max:
+      - 0.8
+      - 0.0
+      - 1.0
+  actions:
+    JointPositionAction:
+      process_order:
+      - scale
+      - offset
+      scale:
+      - 0.5475464629911068
+      - 0.35066146637882434
+      - 0.5475464629911068
+      - 0.35066146637882434
+      - 0.43857731392336724
+      - 0.12
+      - 0.5475464629911068
+      - 0.35066146637882434
+      - 0.5475464629911068
+      - 0.35066146637882434
+      - 0.43857731392336724
+      - 0.12
+      offset:
+      - -0.1
+      - 0
+      - 0
+      - 0.3
+      - -0.2
+      - 0
+      - -0.1
+      - 0
+      - 0
+      - 0.3
+      - -0.2
+      - 0
+    AppliedActionClip:
+      process_order:
+      - clip
+      min:
+      - -3.9451903098771095
+      - -0.9954472717082079
+      - -4.532656436939325
+      - -0.6813227939390937
+      - -1.374572922176584
+      - -1.9635
+      - -3.9451903098771095
+      - -7.963706502564938
+      - -4.532656436939325
+      - -0.6813227939390937
+      - -1.374572922176584
+      - -1.9635
+      max:
+      - 4.94802757961383
+      - 7.963706502564938
+      - 4.532656436939325
+      - 6.933886050009484
+      - 1.4906983996765424
+      - 1.9635
+      - 4.94802757961383
+      - 0.9954472717082079
+      - 4.532656436939325
+      - 6.933886050009484
+      - 1.4906983996765424
+      - 1.9635
+  observations:
+    terms:
+      base_ang_vel_B:
+        process_order:
+        - clip
+        - scale
+        min: -10.0
+        max: 10.0
+        scale: 0.25
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      projected_gravity:
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      velocity_commands:
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      # gait_phase_temporal_v1:
+      # gait_phase_narrow_v5:
+      gait_phase_temporal_v1:
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      joint_pos:
+        params:
+          joint_ids:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7
+          - 8
+          - 9
+          - 10
+          - 11
+        process_order:
+        - offset
+        - clip
+        offset:
+        - 0.1
+        - 0
+        - 0
+        - -0.3
+        - 0.2
+        - 0
+        - 0.1
+        - 0
+        - 0
+        - -0.3
+        - 0.2
+        - 0
+        min: -2.0
+        max: 2.0
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      joint_vel:
+        params:
+          joint_ids:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7
+          - 8
+          - 9
+          - 10
+          - 11
+        process_order:
+        - clip
+        - scale
+        min: -30.0
+        max: 30.0
+        scale: 0.05
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      last_action:
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first

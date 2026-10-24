@@ -6,7 +6,7 @@
       "type": "pickString",
       "description": "Select ROS distribution",
       "options": ["jazzy", "humble", "foxy", "galactic"],
-      "default": "jazzy"
+      "default": "humble"
     },
     {
       "id": "BuildType",
@@ -90,6 +90,7 @@
         "--event-handlers", "console_direct+",
         "--packages-up-to", "legged_rl_deploy",
         "--cmake-args", "-DCMAKE_BUILD_TYPE=${input:BuildType}",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
         "-DPython3_EXECUTABLE=/usr/bin/python3",
         "-DPython_EXECUTABLE=/usr/bin/python3",
         "-DPYTHON_EXECUTABLE=/usr/bin/python3"
