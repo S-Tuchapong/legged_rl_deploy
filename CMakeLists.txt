@@ -221,4 +221,15 @@ ament_export_dependencies(
   rosidl_default_runtime
 )
 
+option(BUILD_POLICY_CONTRACT_TESTS "Build offline policy contract tests (requires ORT)" OFF)
+if(BUILD_POLICY_CONTRACT_TESTS)
+  enable_testing()
+  add_executable(temporal_contract_test tests/temporal_contract_test.cpp)
+  target_link_libraries(temporal_contract_test PRIVATE ${PROJECT_NAME})
+  add_test(NAME temporal_contract COMMAND temporal_contract_test)
+  # A sourced install may still contain an older library with a different ABI.
+  set_tests_properties(temporal_contract PROPERTIES
+    ENVIRONMENT "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:${PROJECT_NAME}>:$ENV{LD_LIBRARY_PATH}")
+endif()
+
 ament_package()

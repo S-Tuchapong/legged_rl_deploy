@@ -77,7 +77,31 @@ void PolicySlot::init() {
   joint_ids_map_ = pnode["joint_ids_map"].as<std::vector<size_t>>();
   stiffness_ = pnode["stiffness"].as<std::vector<float>>();
   damping_ = pnode["damping"].as<std::vector<float>>();
+  if (joint_ids_map_.size() != output_dim_ || stiffness_.size() != output_dim_ ||
+      damping_.size() != output_dim_) {
+    throw std::runtime_error("Action joint map and gains must match output_dim");
+  }
+  std::unordered_set<size_t> action_ids;
+  for (size_t id : joint_ids_map_) {
+    if (id >= robot_model_.nJoints() || !action_ids.insert(id).second) {
+      throw std::runtime_error("Invalid or duplicate action joint ID");
+    }
+  }
   last_action_.assign(output_dim_, 0.0f);
+
+  if (pnode["fixed_joints"]) {
+    std::unordered_set<size_t> ids(joint_ids_map_.begin(), joint_ids_map_.end());
+    for (const auto& joint : pnode["fixed_joints"]) {
+      FixedJoint fixed{joint["id"].as<size_t>(), joint["position"].as<float>(),
+                       joint["stiffness"].as<float>(), joint["damping"].as<float>()};
+      if (fixed.id >= robot_model_.nJoints() || !ids.insert(fixed.id).second ||
+          !std::isfinite(fixed.position) || !std::isfinite(fixed.stiffness) ||
+          !std::isfinite(fixed.damping) || fixed.stiffness < 0 || fixed.damping < 0) {
+        throw std::runtime_error("Invalid or overlapping fixed_joints entry");
+      }
+      fixed_joints_.push_back(fixed);
+    }
+  }
 
   if (pnode["commands"]) {
     for (auto it = pnode["commands"].begin(); it != pnode["commands"].end(); ++it) {
@@ -90,6 +114,10 @@ void PolicySlot::init() {
       if (!base_velocity.IsMap()) {
         throw std::runtime_error("[PolicySlot:" + name_ +
                                  "] commands.base_velocity must be a map");
+      }
+      startup_stand_seconds_ = base_velocity["startup_stand_seconds"].as<float>(0.0f);
+      if (!std::isfinite(startup_stand_seconds_) || startup_stand_seconds_ < 0) {
+        throw std::runtime_error("startup_stand_seconds must be finite and nonnegative");
       }
       const YAML::Node rate_limit = base_velocity["rate_limit"];
       if (rate_limit) {
@@ -164,6 +192,9 @@ void PolicySlot::reset(const LeggedState& state) {
   std::fill(input_buf_.begin(), input_buf_.end(), 0.0f);
   gait_phase_motion_active_ = false;
   gait_phase_elapsed_sec_ = 0.0f;
+  policy_ticks_ = 0;
+  narrow_phase_ = 0.0f;
+  narrow_period_ = 0.0f;
   std::fill(last_action_.begin(), last_action_.end(), 0.0f);
   std::fill(obs_now_.begin(), obs_now_.end(), 0.0f);
   std::fill(velocity_command_.begin(), velocity_command_.end(), 0.0f);
@@ -313,7 +344,8 @@ void PolicySlot::calculateObsTerm(ObsTerm& term) {
     return;
   }
 
-  if (term.name == "gait_phase_2") term.dim = 2;
+  if (term.name == "gait_phase_2" || term.name == "gait_phase_narrow_v5" ||
+      term.name == "gait_phase_temporal_v1") term.dim = 2;
   if (term.name == "hop_command") term.dim = 1;
   if (term.name == "base_pos") term.dim = 3;
   if (term.name == "base_quat_w") term.dim = 4;
@@ -333,8 +365,25 @@ void PolicySlot::calculateObsTerm(ObsTerm& term) {
     }
     term.dim = 4;
   }
-  if (term.name == "joint_pos") term.dim = robot_model_.nJoints();
-  if (term.name == "joint_vel") term.dim = robot_model_.nJoints();
+  if (term.name == "joint_pos" || term.name == "joint_vel") {
+    // Explicit IDs are robot joint indices, independent of action ordering.
+    if (term.params["joint_ids"]) {
+      term.joint_ids = term.params["joint_ids"].as<std::vector<size_t>>();
+    } else {
+      term.joint_ids = joint_ids_map_;
+      // Preserve the legacy full-body contract unless a subset is requested.
+      if (term.joint_ids.size() != robot_model_.nJoints()) {
+        throw std::runtime_error("Partial joint maps require observations.params.joint_ids");
+      }
+    }
+    std::unordered_set<size_t> seen;
+    for (size_t id : term.joint_ids) {
+      if (id >= robot_model_.nJoints() || !seen.insert(id).second) {
+        throw std::runtime_error("Invalid or duplicate observation joint ID");
+      }
+    }
+    term.dim = term.joint_ids.size();
+  }
   if (term.name == "last_action") term.dim = output_dim_;
 
   if (term.dim == 0) {
@@ -555,6 +604,9 @@ void PolicySlot::updateCommands(const unitree::common::Gamepad& gamepad) {
   const auto processor = commands_.find("base_velocity");
   if (processor != commands_.end()) processor->second.process(target);
 
+  if (static_cast<double>(policy_ticks_) * policy_dt_ + 1e-7 < startup_stand_seconds_) {
+    std::fill(target.begin(), target.end(), 0.0f);
+  }
   if (velocity_rate_limit_.empty()) {
     velocity_command_ = std::move(target);
   } else {
@@ -564,6 +616,14 @@ void PolicySlot::updateCommands(const unitree::common::Gamepad& gamepad) {
                                      -max_delta, max_delta);
       velocity_command_[i] += delta;
     }
+  }
+
+  // Opt-in TemporalV1 T01 effective command; leave other policies unchanged.
+  const auto temporal = obs_term_indices_.find("gait_phase_temporal_v1");
+  if (temporal != obs_term_indices_.end() &&
+      std::hypot(velocity_command_[0], velocity_command_[1]) +
+          std::abs(velocity_command_[2]) <= 0.1f) {
+    std::fill(velocity_command_.begin(), velocity_command_.end(), 0.0f);
   }
 
   const auto support_width_processor = commands_.find("support_width");
@@ -628,6 +688,33 @@ void PolicySlot::assembleObsFrame(const LeggedState& state,
                                    "] Unknown joystick button: " + keys[i]);
         v[i] = btn.pressed ? 1.0f : 0.0f;
       }
+
+    } else if (term.name == "gait_phase_temporal_v1") {
+      // Training adaptive_phase with slow_period == fast_period == 0.9.
+      // Episode reset starts at zero. Stop freezes phase; restart does not reset.
+      const bool active = std::hypot(velocity_command_[0], velocity_command_[1]) +
+                          std::abs(velocity_command_[2]) > 0.1f;
+      if (policy_ticks_ > 0 && active) {
+        narrow_phase_ = std::fmod(narrow_phase_ + policy_dt_ / 0.9f, 1.0f);
+      }
+      v[0] = active ? std::sin(6.28318530718f * narrow_phase_) : 0.0f;
+      v[1] = active ? std::cos(6.28318530718f * narrow_phase_) : 0.0f;
+
+    } else if (term.name == "gait_phase_narrow_v5") {
+      const float vx = velocity_command_[0], vy = velocity_command_[1];
+      const float yaw = velocity_command_[2];
+      const float speed = std::sqrt(vx * vx + vy * vy + 0.35f * 0.35f * yaw * yaw);
+      const float x = std::clamp((speed - 0.1f) / 0.4f, 0.0f, 1.0f);
+      const float target = 1.1f - 0.2f * x * x * (3.0f - 2.0f * x);
+      if (policy_ticks_ == 0) narrow_period_ = target;
+      else narrow_period_ += -std::expm1(-policy_dt_ / 0.2f) * (target - narrow_period_);
+      const bool active = std::hypot(vx, vy) + std::abs(yaw) > 0.1f;
+      // The reset observation is at t=0, before any elapsed policy tick.
+      if (policy_ticks_ > 0 && active) {
+        narrow_phase_ = std::fmod(narrow_phase_ + policy_dt_ / narrow_period_, 1.0f);
+      }
+      v[0] = active ? std::sin(6.28318530718f * narrow_phase_) : 0.0f;
+      v[1] = active ? std::cos(6.28318530718f * narrow_phase_) : 0.0f;
 
     } else if (term.name == "gait_phase_2") {
       const float cycle_time = term.params["cycle_time"].as<float>();
@@ -747,13 +834,13 @@ void PolicySlot::assembleObsFrame(const LeggedState& state,
       v[3] = support_width_command_;
 
     } else if (term.name == "joint_pos") {
-      for (size_t i = 0; i < robot_model_.nJoints(); ++i) {
-        v[i] = state.joint_pos()[joint_ids_map_[i]];
+      for (size_t i = 0; i < term.joint_ids.size(); ++i) {
+        v[i] = state.joint_pos()[term.joint_ids[i]];
       }
 
     } else if (term.name == "joint_vel") {
-      for (size_t i = 0; i < robot_model_.nJoints(); ++i) {
-        v[i] = state.joint_vel()[joint_ids_map_[i]];
+      for (size_t i = 0; i < term.joint_ids.size(); ++i) {
+        v[i] = state.joint_vel()[term.joint_ids[i]];
       }
 
     } else if (term.name == "last_action") {
@@ -852,8 +939,12 @@ void PolicySlot::updatePolicy(const LeggedState& state,
   }
   policy_runner_->infer(runtime_inputs_, raw_output_.data());
 
-  last_action_ = raw_output_;
   output_buf_ = raw_output_;
+  // Opt-in: previous action is clipped raw action, before scale/offset.
+  auto applied_clip = actions_.find("AppliedActionClip");
+  if (applied_clip != actions_.end()) applied_clip->second.process(output_buf_);
+  last_action_ = output_buf_;
+  ++policy_ticks_;
   has_valid_output_ = true;
 
   auto it = actions_.find("JointPositionAction");

@@ -311,6 +311,21 @@ void LeggedRLDeploy::updateHighController() {
   const auto& kd = active_slot_->damping();
   const size_t n = active_slot_->outputDim();
 
+  for (const auto& fixed : active_slot_->fixedJoints()) {
+    const size_t j = fixed.id;
+    jnt_cmd_.dq[j] = 0.0f;
+    if (clip_final_tau_) {
+      jnt_cmd_.tau[j] = fixed.stiffness * (fixed.position - real_state_.joint_pos()[j]) -
+                        fixed.damping * real_state_.joint_vel()[j];
+      jnt_cmd_.q[j] = jnt_cmd_.kp[j] = jnt_cmd_.kd[j] = 0.0f;
+    } else {
+      jnt_cmd_.q[j] = fixed.position;
+      jnt_cmd_.kp[j] = fixed.stiffness;
+      jnt_cmd_.kd[j] = fixed.damping;
+      jnt_cmd_.tau[j] = 0.0f;
+    }
+  }
+
   for (size_t i = 0; i < n; ++i) {
     const size_t j = jmap[i];
 

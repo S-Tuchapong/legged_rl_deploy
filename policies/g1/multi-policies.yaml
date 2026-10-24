@@ -30,7 +30,7 @@ fsm:
   policies:
     # ---- velocity (walking / balancing) ----
     velocity:
-      config: src/legged_rl_deploy/policies/g1/velocity/unitree_rl_mjlab/config.yaml
+      config: src/legged_rl_deploy/policies/g1/velocity/GRU61Delay/config.yaml
       transitions:
         dance1_subject2: R1 + A
         dance_102: R1 + B

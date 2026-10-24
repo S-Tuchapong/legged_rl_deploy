@@ -39,9 +39,15 @@ public:
   const std::vector<size_t>& jointIdsMap() const { return joint_ids_map_; }
   const std::vector<float>& stiffness() const { return stiffness_; }
   const std::vector<float>& damping() const { return damping_; }
+  struct FixedJoint {
+    size_t id;
+    float position, stiffness, damping;
+  };
+  const std::vector<FixedJoint>& fixedJoints() const { return fixed_joints_; }
   bool hasValidOutput() const { return has_valid_output_; }
 
 private:
+  friend struct PolicySlotContractTest;
   enum class OrderMode { OldestFirst, NewestFirst, Explicit };
   enum class HistoryWarmupMode { RepeatFirst, Zero };
 
@@ -56,6 +62,7 @@ private:
     size_t offset = 0;
     std::optional<Processor> proc;
     YAML::Node params;
+    std::vector<size_t> joint_ids;
     size_t default_length = 1;
     bool has_default_length = false;
     ObsOrderSpec default_order;
@@ -130,6 +137,11 @@ private:
   std::unordered_map<std::string, Processor> actions_;
   std::vector<float> velocity_command_{0.0f, 0.0f, 0.0f};
   std::vector<float> velocity_rate_limit_;
+  std::vector<FixedJoint> fixed_joints_;
+  float startup_stand_seconds_ = 0.0f;
+  size_t policy_ticks_ = 0;
+  float narrow_phase_ = 0.0f;
+  float narrow_period_ = 0.0f;
   float support_width_command_ = 0.0f;
   // State for gait_phase_2 reset-on-motion behavior.
   bool gait_phase_motion_active_ = false;
