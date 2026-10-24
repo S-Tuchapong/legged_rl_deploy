@@ -1,6 +1,8 @@
 # TemporalV1 GRU61Delay: policy interface only; original hardware gains/settings retained.
 llc_config_file: src/unitree_lowlevel/config/g1.yaml
 ll_dt: 0.005
+# Send position references and PD gains to the robot motor controllers.
+clip_final_tau: false
 policy:
   backend: ort
   model_path: src/legged_rl_deploy/policies/g1/velocity/GRU61Delay/bidirect_GRU61Delay.onnx
@@ -46,6 +48,26 @@ policy:
   - 6.3
   - 1.8
   - 1.8
+  # Policy controls legs (0-11); hold waist/arms (12-28) at zero while active.
+  # Gains match unitree_lowlevel/config/g1.yaml. Test with MuJoCo upper-body lock OFF.
+  fixed_joints:
+  - {id: 12, position: 0.0, stiffness: 40.2, damping: 2.6} # waist_yaw_joint
+  - {id: 13, position: 0.0, stiffness: 28.5, damping: 1.8} # waist_roll_joint
+  - {id: 14, position: 0.0, stiffness: 28.5, damping: 1.8} # waist_pitch_joint
+  - {id: 15, position: 0.0, stiffness: 14.3, damping: 0.9} # left_shoulder_pitch_joint
+  - {id: 16, position: 0.0, stiffness: 14.3, damping: 0.9} # left_shoulder_roll_joint
+  - {id: 17, position: 0.0, stiffness: 14.3, damping: 0.9} # left_shoulder_yaw_joint
+  - {id: 18, position: 0.0, stiffness: 14.3, damping: 0.9} # left_elbow_joint
+  - {id: 19, position: 0.0, stiffness: 14.3, damping: 0.9} # left_wrist_roll_joint
+  - {id: 20, position: 0.0, stiffness: 16.8, damping: 1.1} # left_wrist_pitch_joint
+  - {id: 21, position: 0.0, stiffness: 16.8, damping: 1.1} # left_wrist_yaw_joint
+  - {id: 22, position: 0.0, stiffness: 14.3, damping: 0.9} # right_shoulder_pitch_joint
+  - {id: 23, position: 0.0, stiffness: 14.3, damping: 0.9} # right_shoulder_roll_joint
+  - {id: 24, position: 0.0, stiffness: 14.3, damping: 0.9} # right_shoulder_yaw_joint
+  - {id: 25, position: 0.0, stiffness: 14.3, damping: 0.9} # right_elbow_joint
+  - {id: 26, position: 0.0, stiffness: 14.3, damping: 0.9} # right_wrist_roll_joint
+  - {id: 27, position: 0.0, stiffness: 16.8, damping: 1.1} # right_wrist_pitch_joint
+  - {id: 28, position: 0.0, stiffness: 16.8, damping: 1.1} # right_wrist_yaw_joint
   commands:
     base_velocity:
       process_order:
