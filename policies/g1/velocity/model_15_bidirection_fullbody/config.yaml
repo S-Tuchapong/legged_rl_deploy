@@ -1,0 +1,142 @@
+# TemporalV1 bidirectional GRU61Delay: all 29 G1 joints are policy-controlled.
+llc_config_file: src/unitree_lowlevel/config/g1.yaml
+ll_dt: 0.005
+# Send position references and PD gains to the robot motor controllers.
+clip_final_tau: false
+policy:
+  backend: ort
+  model_path: src/legged_rl_deploy/policies/g1/velocity/model_15_bidirection_fullbody/FixUpper_model_15_effort_cap/TCN61Delay.onnx
+  #src/legged_rl_deploy/policies/g1/velocity/model_15_bidirection_fullbody/FixUpper_model_15_effort_cap/GRU61Delay.onnx
+  #src/legged_rl_deploy/policies/g1/velocity/model_15_bidirection_fullbody/LoweredT-ExistingCaps/GRU61Delay.onnx
+  #src/legged_rl_deploy/policies/g1/velocity/model_15_bidirection_fullbody/LoweredTSupport-Mode15Caps/GRU61Delay.onnx
+  # 61 frames x (3 + 3 + 3 + 2 + 29 + 29 + 29), term-major.
+  input_dim: 5978
+  output_dim: 29
+  policy_dt: 0.02
+  joint_ids_map: [
+    0, 1, 2, 3, 4, 5,
+    6, 7, 8, 9, 10, 11,
+    12, 13, 14,
+    15, 16, 17, 18, 19, 20, 21,
+    22, 23, 24, 25, 26, 27, 28
+  ]
+  # Gains match ONNX metadata; retain full-precision leg gains from G1_ARTICULATION.
+  stiffness: [
+    40.17923863450712, 99.09842777666111, 40.17923863450712, 99.09842777666111, 28.50124619574858, 28.50124619574858,
+    40.17923863450712, 99.09842777666111, 40.17923863450712, 99.09842777666111, 28.50124619574858, 28.50124619574858,
+    40.2, 28.5, 28.5,
+    14.3, 14.3, 14.3, 14.3, 14.3, 16.8, 16.8,
+    14.3, 14.3, 14.3, 14.3, 14.3, 16.8, 16.8
+  ]
+  damping: [
+    2.557889775413375, 6.308801853496639, 2.557889775413375, 6.308801853496639, 1.814445686584846, 1.814445686584846,
+    2.557889775413375, 6.308801853496639, 2.557889775413375, 6.308801853496639, 1.814445686584846, 1.814445686584846,
+    2.6, 1.8, 1.8,
+    0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1,
+    0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1
+  ]
+  commands:
+    base_velocity:
+      process_order:
+      - clip
+      min:
+      - -0.8
+      - 0.0
+      - -1.0
+      max:
+      - 0.8
+      - 0.0
+      - 1.0
+  actions:
+    JointPositionAction:
+      process_order: [scale, offset]
+      # ONNX action_scale: full-precision leg scales, 0.12 ankle roll,
+      # 0.1 waist/shoulders/elbows and 0.05 wrists.
+      scale: [
+        0.5475464629911068, 0.35066146637882434, 0.5475464629911068, 0.35066146637882434, 0.43857731392336724, 0.12,
+        0.5475464629911068, 0.35066146637882434, 0.5475464629911068, 0.35066146637882434, 0.43857731392336724, 0.12,
+        0.1, 0.1, 0.1,
+        0.1, 0.1, 0.1, 0.1, 0.05, 0.05, 0.05,
+        0.1, 0.1, 0.1, 0.1, 0.05, 0.05, 0.05
+      ]
+      # ONNX default_joint_pos: home legs and zero waist/arms.
+      offset: [
+        -0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
+        -0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
+        0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+      ]
+    # Raw bounds = (0.9 soft joint limit - default position) / action scale.
+    # Limits use G1Beam/src/assets/robots/unitree_g1/xmls/g1.xml.
+    # Clip before scale/offset; last_action observes these clipped raw actions.
+    AppliedActionClip:
+      process_order: [clip]
+      min: [
+        -3.9451903098771095, -0.9954472717082079, -4.532656436939325, -0.6813227939390937, -1.374572922176584, -1.9635,
+        -3.9451903098771095, -7.963706502564938, -4.532656436939325, -0.6813227939390937, -1.374572922176584, -1.9635,
+        -23.561999999999998, -4.68, -4.68,
+        -28.012199999999996, -13.96215, -23.561999999999998, -8.9012, -35.49996, -29.059739999999998, -29.059739999999998,
+        -28.012199999999996, -20.59515, -23.561999999999998, -8.9012, -35.49996, -29.059739999999998, -29.059739999999998
+      ]
+      max: [
+        4.94802757961383, 7.963706502564938, 4.532656436939325, 6.933886050009484, 1.4906983996765424, 1.9635,
+        4.94802757961383, 0.9954472717082079, 4.532656436939325, 6.933886050009484, 1.4906983996765424, 1.9635,
+        23.561999999999998, 4.68, 4.68,
+        23.824199999999998, 20.59515, 23.561999999999998, 19.373199999999997, 35.49996, 29.059739999999998, 29.059739999999998,
+        23.824199999999998, 13.96215, 23.561999999999998, 19.373199999999997, 35.49996, 29.059739999999998, 29.059739999999998
+      ]
+  observations:
+    terms:
+      base_ang_vel_B:
+        process_order:
+        - clip
+        - scale
+        min: -10.0
+        max: 10.0
+        scale: 0.25
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      projected_gravity:
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      velocity_commands:
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      gait_phase_temporal_v1:
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      joint_pos:
+        process_order:
+        - offset
+        - clip
+        offset: [
+          0.1, 0.0, 0.0, -0.3, 0.2, 0.0,
+          0.1, 0.0, 0.0, -0.3, 0.2, 0.0,
+          0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ]
+        min: -2.0
+        max: 2.0
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      joint_vel:
+        process_order:
+        - clip
+        - scale
+        min: -30.0
+        max: 30.0
+        scale: 0.05
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
+      last_action:
+        length: 61
+        order: oldest_first
+        history_warmup: repeat_first
