@@ -1,0 +1,40 @@
+robot: g1
+robot_scene: scene_bridge.xml
+use_joystick: 1
+joystick_type: xbox
+joystick_device: /dev/input/js0
+joystick_bits: 16
+print_scene_information: 1
+enable_elastic_band: 1
+depth_camera:
+  enabled: true
+  exclude_self: false
+  camera_name: g1_depth_camera
+  parent_frame: torso_link
+  mount:
+    position_m:
+    - 0.12
+    - 0.0
+    - 0.42
+    rpy_rad:
+    - 0.0
+    - 0.48171087821037145
+    - 0.0
+  sensor:
+    model: d435i
+    profile: g1_training_424x240_50
+  ros:
+    camera_link_frame_id: camera_link
+    depth_frame_id: camera_depth_frame
+    optical_frame_id: camera_depth_optical_frame
+    depth_topic: /g1_sim/camera/depth/image_rect_raw
+    camera_info_topic: /g1_sim/camera/depth/camera_info
+  preview:
+    topic: /g1_sim/beam_depth/depth_m
+    near_m: 0.3
+    far_m: 3.0
+  enabled_geom_groups:
+  - 0
+  - 1
+  - 2
+  - 4

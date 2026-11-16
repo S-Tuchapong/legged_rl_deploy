@@ -620,9 +620,11 @@ void PolicySlot::updateCommands(const unitree::common::Gamepad& gamepad) {
 
   // Opt-in TemporalV1 T01 effective command; leave other policies unchanged.
   const auto temporal = obs_term_indices_.find("gait_phase_temporal_v1");
+  const float temporal_threshold = temporal == obs_term_indices_.end() ? 0.1f :
+      obs_terms_[temporal->second].params["command_threshold"].as<float>(0.1f);
   if (temporal != obs_term_indices_.end() &&
       std::hypot(velocity_command_[0], velocity_command_[1]) +
-          std::abs(velocity_command_[2]) <= 0.1f) {
+          std::abs(velocity_command_[2]) <= temporal_threshold) {
     std::fill(velocity_command_.begin(), velocity_command_.end(), 0.0f);
   }
 
@@ -692,8 +694,9 @@ void PolicySlot::assembleObsFrame(const LeggedState& state,
     } else if (term.name == "gait_phase_temporal_v1") {
       // Training adaptive_phase with slow_period == fast_period == 0.9.
       // Episode reset starts at zero. Stop freezes phase; restart does not reset.
+      const float threshold = term.params["command_threshold"].as<float>(0.1f);
       const bool active = std::hypot(velocity_command_[0], velocity_command_[1]) +
-                          std::abs(velocity_command_[2]) > 0.1f;
+                          std::abs(velocity_command_[2]) > threshold;
       if (policy_ticks_ > 0 && active) {
         narrow_phase_ = std::fmod(narrow_phase_ + policy_dt_ / 0.9f, 1.0f);
       }

@@ -1,3 +1,6 @@
 thirdparty/
 .venv/
 __pycache__/
+
+# Original training run (logs/debug checkpoints); deployment copy lives in policies/.
+/fullbody_depth/

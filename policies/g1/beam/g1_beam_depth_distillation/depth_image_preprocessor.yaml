@@ -1,0 +1,33 @@
+# Intrinsics scaled from the Go2 template camera; calibrate for your physical D435i.
+# No range-to-axial conversion: RealSense depth is already optical-axis distance.
+depth_image_preprocessor_node:
+  ros__parameters:
+    input:
+      topic: /camera/depth/image_rect_raw
+      width: 424
+      height: 240
+      depth_scale_16uc1: 0.001
+      camera_info:
+        topic: /camera/depth/camera_info
+        intrinsics:
+        - 215.1071014404295
+        - 215.1071014404295
+        - 213.798583984375
+        - 118.580352783203
+        intrinsics_atol: 0.001
+        distortion_model: plumb_bob
+        distortion:
+        - 0.0
+        - 0.0
+        - 0.0
+        - 0.0
+        - 0.0
+        distortion_atol: 1.0e-09
+    output:
+      topic: /unitree_g1_beam_depth/depth_m
+    process_order:
+    - replace_invalid
+    replace_invalid:
+      valid_min: 0.0
+      valid_min_inclusive: true
+      value: 0.0

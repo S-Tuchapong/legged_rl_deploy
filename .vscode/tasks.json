@@ -1,6 +1,42 @@
 {
   "version": "2.0.0",
   "inputs": [
+{
+  "id": "G1TrainingTerrain",
+  "type": "pickString",
+  "description": "Training terrain level: 0 = 0.60 m wide, 9 = 0.18 m wide; height above ground = 0.55 m",
+  "options": [
+    "scene_depth_training_level_0.xml",
+    "scene_depth_training_level_1.xml",
+    "scene_depth_training_level_2.xml",
+    "scene_depth_training_level_3.xml",
+    "scene_depth_training_level_4.xml",
+    "scene_depth_training_level_5.xml",
+    "scene_depth_training_level_6.xml",
+    "scene_depth_training_level_7.xml",
+    "scene_depth_training_level_8.xml",
+    "scene_depth_training_level_9.xml"
+  ],
+  "default": "scene_depth_training_level_0.xml"
+},
+    {
+      "id": "G1BeamRosDistro",
+      "type": "pickString",
+      "description": "G1 beam ROS distribution",
+      "options": [
+        "humble",
+        "jazzy",
+        "foxy",
+        "galactic"
+      ],
+      "default": "humble"
+    },
+    {
+      "id": "G1BeamNetworkInterface",
+      "type": "promptString",
+      "description": "G1 beam robot network interface (lo for local simulation)",
+      "default": "eth0"
+    },
     {
       "id": "RosDistro",
       "type": "pickString",
@@ -48,6 +84,250 @@
     }
   ],
   "tasks": [
+{
+  "label": "G1 Beam Sim: Training Terrain",
+  "type": "process",
+  "command": "bash",
+  "args": [
+    "${workspaceFolder}/scripts/run.sh",
+    "lo",
+    "${input:G1BeamRosDistro}",
+    "ros2",
+    "run",
+    "unitree_mujoco",
+    "unitree_mujoco",
+    "--config",
+    "${workspaceFolder}/policies/g1/beam/g1_beam_depth_distillation/mujoco_training.yaml",
+    "--scene",
+    "${input:G1TrainingTerrain}",
+    "--depth-camera"
+  ],
+  "options": {
+    "cwd": "${workspaceFolder}"
+  },
+  "presentation": {
+    "reveal": "always",
+    "panel": "dedicated"
+  },
+  "problemMatcher": []
+},
+{
+  "label": "G1 Beam Sim: Training Terrain + Depth",
+  "dependsOrder": "parallel",
+  "dependsOn": [
+    "G1 Beam Sim: Training Terrain",
+    "G1 Beam Sim: Depth"
+  ],
+  "problemMatcher": []
+},
+{
+  "label": "G1 Beam Sim: Mujoco",
+  "type": "process",
+  "command": "bash",
+  "args": [
+    "${workspaceFolder}/scripts/run.sh",
+    "lo",
+    "${input:G1BeamRosDistro}",
+    "ros2",
+    "run",
+    "unitree_mujoco",
+    "unitree_mujoco",
+    "--config",
+    "${workspaceFolder}/policies/g1/beam/g1_beam_depth_distillation/mujoco.yaml",
+    "--depth-camera"
+  ],
+  "options": {
+    "cwd": "${workspaceFolder}"
+  },
+  "presentation": {
+    "reveal": "always",
+    "panel": "dedicated"
+  },
+  "problemMatcher": []
+},
+{
+  "label": "G1 Beam Sim: Depth",
+  "type": "process",
+  "command": "bash",
+  "args": [
+    "${workspaceFolder}/scripts/run.sh",
+    "lo",
+    "${input:G1BeamRosDistro}",
+    "ros2",
+    "run",
+    "legged_rl_deploy",
+    "depth_image_preprocessor_node.py",
+    "--ros-args",
+    "--params-file",
+    "${workspaceFolder}/policies/g1/beam/g1_beam_depth_distillation/depth_image_preprocessor_sim.yaml"
+  ],
+  "options": {
+    "cwd": "${workspaceFolder}"
+  },
+  "presentation": {
+    "reveal": "always",
+    "panel": "dedicated"
+  },
+  "problemMatcher": []
+},
+{
+  "label": "G1 Beam Sim: Mujoco + Depth",
+  "dependsOrder": "parallel",
+  "dependsOn": [
+    "G1 Beam Sim: Mujoco",
+    "G1 Beam Sim: Depth"
+  ],
+  "problemMatcher": []
+},
+{
+  "label": "G1 Beam Sim: Policy",
+  "type": "process",
+  "command": "bash",
+  "args": [
+    "${workspaceFolder}/scripts/run.sh",
+    "lo",
+    "${input:G1BeamRosDistro}",
+    "ros2",
+    "run",
+    "legged_rl_deploy",
+    "legged_rl_deploy_node",
+    "lo",
+    "${workspaceFolder}/policies/g1/beam/g1_beam_depth_distillation/config_sim.yaml"
+  ],
+  "options": {
+    "cwd": "${workspaceFolder}"
+  },
+  "presentation": {
+    "reveal": "always",
+    "panel": "dedicated"
+  },
+  "problemMatcher": []
+},
+{
+  "label": "G1 Beam Sim: Check Depth Rate",
+  "type": "process",
+  "command": "bash",
+  "args": [
+    "${workspaceFolder}/scripts/run.sh",
+    "lo",
+    "${input:G1BeamRosDistro}",
+    "ros2",
+    "topic",
+    "hz",
+    "/g1_sim/beam_depth/depth_m"
+  ],
+  "options": {
+    "cwd": "${workspaceFolder}"
+  },
+  "presentation": {
+    "reveal": "always",
+    "panel": "dedicated"
+  },
+  "problemMatcher": []
+},
+    {
+      "label": "G1 Beam: Camera",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/run.sh",
+        "${input:G1BeamNetworkInterface}",
+        "${input:G1BeamRosDistro}",
+        "ros2",
+        "launch",
+        "realsense2_camera",
+        "rs_launch.py",
+        "config_file:='${workspaceFolder}/policies/g1/beam/g1_beam_depth_distillation/D435i.yaml'"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "G1 Beam: Depth Preprocessor",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/run.sh",
+        "${input:G1BeamNetworkInterface}",
+        "${input:G1BeamRosDistro}",
+        "ros2",
+        "run",
+        "legged_rl_deploy",
+        "depth_image_preprocessor_node.py",
+        "--ros-args",
+        "--params-file",
+        "${workspaceFolder}/policies/g1/beam/g1_beam_depth_distillation/depth_image_preprocessor.yaml"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "G1 Beam: Camera + Depth",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "G1 Beam: Camera",
+        "G1 Beam: Depth Preprocessor"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "G1 Beam: Policy",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/run.sh",
+        "${input:G1BeamNetworkInterface}",
+        "${input:G1BeamRosDistro}",
+        "ros2",
+        "run",
+        "legged_rl_deploy",
+        "legged_rl_deploy_node",
+        "${input:G1BeamNetworkInterface}",
+        "${workspaceFolder}/policies/g1/beam/g1_beam_depth_distillation/config.yaml"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "G1 Beam: Check Depth Rate",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/run.sh",
+        "${input:G1BeamNetworkInterface}",
+        "${input:G1BeamRosDistro}",
+        "ros2",
+        "topic",
+        "hz",
+        "/unitree_g1_beam_depth/depth_m"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
     {
       "label": "Download ORT",
       "type": "shell",

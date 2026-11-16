@@ -1,4 +1,5 @@
 #include "legged_rl_deploy/policy_slot.h"
+#include "legged_rl_deploy/policy/policy_factory.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -42,7 +43,8 @@ struct PolicySlotContractTest {
     slot.reset(state);
     slot.update(state, pad, 0, .005);
     for (float v : slot.outputBuf()) check(std::isfinite(v), "Real ONNX inference");
-    check(slot.fixedJoints().empty(), "Original fixed-joint configuration unchanged");
+    check(slot.fixedJoints().size() == cfg["fixed_joints"].size(),
+          "Original fixed-joint configuration unchanged");
     const auto first_real_output = slot.outputBuf();
     slot.reset(state);
     slot.update(state, pad, 0, .005);
@@ -53,6 +55,7 @@ struct PolicySlotContractTest {
     fake->load("", cfg);
     slot.policy_runner_ = std::move(fake);
     slot.reset(state);
+    pad.lx = 0.f; pad.rx = 0.f;
     const auto lower = cfg["actions"]["AppliedActionClip"]["min"].as<std::vector<float>>();
     const auto upper = cfg["actions"]["AppliedActionClip"]["max"].as<std::vector<float>>();
     const auto scale = cfg["actions"]["JointPositionAction"]["scale"].as<std::vector<float>>();
@@ -113,6 +116,44 @@ struct PolicySlotContractTest {
     near(slot.narrow_phase_, 0.f, "Reset phase independent of global clock");
     for (size_t i = 2135; i < 2867; ++i) near(slot.input_buf_[i], 0.f, "Reset previous action history");
     near(slot.velocity_command_[0], .8f, "Effective command on reset");
+
+    // Full-body depth training has no command deadband, unlike TemporalV1.
+    slot.obs_terms_[slot.obs_term_indices_.at("gait_phase_temporal_v1")]
+        .params["command_threshold"] = 0.0f;
+    pad.ly = .05f; pad.lx = 0.f; pad.rx = 0.f;
+    slot.reset(state);
+    slot.update(state, pad, 0, .005);
+    near(slot.velocity_command_[0], .05f, "Depth policy preserves small commands");
+    slot.update(state, pad, 4, .005);
+    near(slot.narrow_phase_, .02f/.9f, "Depth phase advances below legacy deadband");
+    pad.ly = 0.f;
+    slot.update(state, pad, 8, .005);
+    near(slot.narrow_phase_, .02f/.9f, "Depth phase freezes at zero command");
+
+    auto depth_cfg = YAML::LoadFile(root +
+        "policies/g1/beam/g1_beam_depth_distillation/config.yaml")["policy"];
+    auto depth_runner = makePolicyRunner("ort");
+    depth_runner->load(std::string(workspace) + "/" +
+        depth_cfg["model_path"].as<std::string>(), depth_cfg);
+    check(depth_runner->actionDim() == 29, "Full-body depth action contract");
+    check(depth_runner->observationDim() == 5978, "Full-body depth history contract");
+    std::vector<float> history(5978, 0.f), depth(240*424, 1.f), actions(29);
+    std::vector<RuntimeTensor> inputs{{"observations", history.data(), history.size()},
+                                    {"external.depth", depth.data(), depth.size()}};
+    depth_runner->reset();
+    depth_runner->infer(inputs, actions.data());
+    const auto reset_actions = actions;
+    near(depth_runner->outputBuffer(3)[0], 1.f, "First depth frame is fresh");
+    const auto visual = depth_runner->outputBuffer(2);
+    std::fill(depth.begin(), depth.end(), 2.f);
+    depth_runner->infer(inputs, actions.data());
+    check(visual == depth_runner->outputBuffer(2), "Second depth frame is held");
+    near(depth_runner->outputBuffer(3)[0], 0.f, "Next depth frame will be fresh");
+    depth_runner->reset();
+    std::fill(depth.begin(), depth.end(), 1.f);
+    depth_runner->infer(inputs, actions.data());
+    for (size_t j = 0; j < actions.size(); ++j)
+      near(actions[j], reset_actions[j], "Full-body terrain/cache reset parity");
 
     std::cout << "PASS: real ONNX inference, all 2867 history entries over 420 ticks, clipping, phase, reset, decimation\n";
   }

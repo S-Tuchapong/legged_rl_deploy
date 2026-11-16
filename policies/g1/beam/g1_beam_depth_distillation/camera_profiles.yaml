@@ -1,0 +1,19 @@
+models:
+  d435i:
+    profiles:
+      g1_training_424x240_50:
+        width: 424
+        height: 240
+        fps: 50.0
+        depth_scale_m: 0.001
+        fx: 215.1071014404295
+        fy: 215.1071014404295
+        cx: 212.0
+        cy: 120.0
+        distortion_model: plumb_bob
+        distortion:
+        - 0.0
+        - 0.0
+        - 0.0
+        - 0.0
+        - 0.0

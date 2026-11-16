@@ -1,0 +1,46 @@
+{
+  "checkpoint_updates": 7000,
+  "training_core_sha256": "277cdcaaeaa5d3e539033c8e24da4f5c3eaebc6d1979bd2df964bae93d4db29f",
+  "onnx_parity_steps": 80,
+  "max_absolute_error": 4.291534423828125e-06,
+  "inputs": {
+    "actor": [
+      1,
+      5978
+    ],
+    "depth": [
+      1,
+      1,
+      240,
+      424
+    ],
+    "hidden_in": [
+      1,
+      64
+    ],
+    "visual_cache_in": [
+      1,
+      64
+    ],
+    "hold_in": [
+      1
+    ]
+  },
+  "outputs": {
+    "actions": [
+      1,
+      29
+    ],
+    "hidden_out": [
+      1,
+      64
+    ],
+    "visual_cache_out": [
+      1,
+      64
+    ],
+    "hold_out": [
+      1
+    ]
+  }
+}
