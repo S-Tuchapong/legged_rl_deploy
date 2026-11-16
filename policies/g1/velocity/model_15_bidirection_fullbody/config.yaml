@@ -5,7 +5,9 @@ ll_dt: 0.005
 clip_final_tau: false
 policy:
   backend: ort
-  model_path: src/legged_rl_deploy/policies/g1/velocity/model_15_bidirection_fullbody/FixUpper_model_15_effort_cap/TCN61Delay.onnx
+  model_path: src/legged_rl_deploy/policies/g1/velocity/model_15_bidirection_fullbody/LoweredTSupport-Mode15Caps/GRU61Delay.onnx
+  #src/legged_rl_deploy/policies/g1/velocity/model_15_bidirection_fullbody/FixUpper_exists_effort_cap/GRU61Delay.onnx
+  #src/legged_rl_deploy/policies/g1/velocity/model_15_bidirection_fullbody/FixUpper_model_15_effort_cap/TCN61Delay.onnx
   #src/legged_rl_deploy/policies/g1/velocity/model_15_bidirection_fullbody/FixUpper_model_15_effort_cap/GRU61Delay.onnx
   #src/legged_rl_deploy/policies/g1/velocity/model_15_bidirection_fullbody/LoweredT-ExistingCaps/GRU61Delay.onnx
   #src/legged_rl_deploy/policies/g1/velocity/model_15_bidirection_fullbody/LoweredTSupport-Mode15Caps/GRU61Delay.onnx
