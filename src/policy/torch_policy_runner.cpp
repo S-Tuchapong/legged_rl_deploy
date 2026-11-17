@@ -44,9 +44,11 @@ void TorchPolicyRunner::runBackend(const std::vector<const float*>& inputs,
   std::vector<torch::jit::IValue> arguments;
   arguments.reserve(inputs.size());
   for (size_t i = 0; i < inputs.size(); ++i) {
-    arguments.emplace_back(torch::from_blob(
+    auto tensor = torch::from_blob(
         const_cast<float*>(inputs[i]), modelInputs()[i].shape,
-        torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU)));
+        torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU));
+    if (modelInputs()[i].dtype == "bool") tensor = tensor.to(torch::kBool);
+    arguments.emplace_back(tensor);
   }
 
   torch::NoGradGuard no_grad;

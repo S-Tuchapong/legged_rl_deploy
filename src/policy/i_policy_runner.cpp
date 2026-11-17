@@ -49,6 +49,7 @@ void IPolicyRunner::parseContract(const YAML::Node& policy_node) {
   states_.clear();
   constant_inputs_.clear();
   action_output_index_ = 0;
+  reset_pending_ = 1.0f;
 
   const YAML::Node model = policy_node["model"];
   if (!model) {
@@ -121,6 +122,13 @@ void IPolicyRunner::parseContract(const YAML::Node& policy_node) {
       TensorSpec tensor;
       tensor.name = spec["name"].as<std::string>();
       tensor.binding = spec["source"].as<std::string>();
+      tensor.dtype = spec["dtype"].as<std::string>("float32");
+      if (tensor.dtype != "float32" && tensor.dtype != "bool") {
+        throw std::runtime_error("input dtype must be float32 or bool");
+      }
+      if (tensor.dtype == "bool" && startsWith(tensor.binding, "state.")) {
+        throw std::runtime_error("recurrent states must be float32");
+      }
       if (tensor.name.empty() || !names.emplace(tensor.name).second) {
         throw std::runtime_error("policy.model.inputs names must be non-empty and unique");
       }
@@ -163,6 +171,9 @@ void IPolicyRunner::parseContract(const YAML::Node& policy_node) {
         constant_inputs_.push_back(std::move(values));
       } else {
         if (tensor.binding != "observations" &&
+            tensor.binding != "policy_reset" &&
+            !startsWith(tensor.binding, "image_fresh.") &&
+            !startsWith(tensor.binding, "image_age.") &&
             !startsWith(tensor.binding, "external.")) {
           throw std::runtime_error("unsupported input source " + tensor.binding);
         }
@@ -171,6 +182,11 @@ void IPolicyRunner::parseContract(const YAML::Node& policy_node) {
         constant_inputs_.emplace_back();
       }
       tensor.size = tensorSize(tensor.shape, "model input " + tensor.name);
+      if ((tensor.binding == "policy_reset" ||
+           startsWith(tensor.binding, "image_fresh.") ||
+           startsWith(tensor.binding, "image_age.")) && tensor.shape != std::vector<int64_t>{1}) {
+        throw std::runtime_error("reset and image timing inputs require shape [1]");
+      }
       model_inputs_.push_back(std::move(tensor));
     }
 
@@ -184,6 +200,9 @@ void IPolicyRunner::parseContract(const YAML::Node& policy_node) {
       TensorSpec tensor;
       tensor.name = spec["name"].as<std::string>();
       tensor.binding = spec["target"].as<std::string>();
+      if (spec["dtype"].as<std::string>("float32") != "float32") {
+        throw std::runtime_error("model outputs must be float32");
+      }
       if (tensor.name.empty() || !names.emplace(tensor.name).second) {
         throw std::runtime_error("policy.model.outputs names must be non-empty and unique");
       }
@@ -231,7 +250,7 @@ void IPolicyRunner::parseContract(const YAML::Node& policy_node) {
 
   std::unordered_set<std::string> runtime_sources;
   for (const auto& input : model_inputs_) {
-    if (startsWith(input.binding, "state.") || input.binding == "constant") continue;
+    if (startsWith(input.binding, "state.") || input.binding == "constant" || input.binding == "policy_reset") continue;
     if (!runtime_sources.emplace(input.binding).second) {
       throw std::runtime_error("runtime input source used more than once: " +
                                input.binding);
@@ -296,6 +315,10 @@ void IPolicyRunner::run(const std::vector<RuntimeTensor>& runtime_inputs,
       backend_inputs_.push_back(states_.at(stateName(input.binding)).current.data());
       continue;
     }
+    if (input.binding == "policy_reset") {
+      backend_inputs_.push_back(&reset_pending_);
+      continue;
+    }
     if (input.binding == "constant") {
       backend_inputs_.push_back(constant_inputs_[i].data());
       continue;
@@ -321,6 +344,13 @@ void IPolicyRunner::run(const std::vector<RuntimeTensor>& runtime_inputs,
     throw std::runtime_error("unexpected runtime input source");
   }
 
+  for (size_t i = 0; i < model_inputs_.size(); ++i) {
+    if (model_inputs_[i].dtype != "bool") continue;
+    for (size_t j = 0; j < model_inputs_[i].size; ++j) {
+      const float v = backend_inputs_[i][j];
+      if (v != 0.0f && v != 1.0f) throw std::runtime_error("bool inputs require 0 or 1");
+    }
+  }
   runBackend(backend_inputs_, backend_outputs_);
 
   for (size_t i = 0; i < model_outputs_.size(); ++i) {
@@ -346,6 +376,7 @@ void IPolicyRunner::run(const std::vector<RuntimeTensor>& runtime_inputs,
   const auto& action_values = output_buffers_[action_output_index_];
   std::copy(action_values.begin(), action_values.end(), actions);
   for (auto& entry : states_) entry.second.current.swap(entry.second.next);
+  reset_pending_ = 0.0f;
 }
 
 void IPolicyRunner::infer(const std::vector<RuntimeTensor>& runtime_inputs,
@@ -357,6 +388,7 @@ void IPolicyRunner::infer(const std::vector<RuntimeTensor>& runtime_inputs,
 
 void IPolicyRunner::reset() {
   if (!loaded_) return;
+  reset_pending_ = 1.0f;
   for (auto& entry : states_) {
     std::fill(entry.second.current.begin(), entry.second.current.end(), 0.0f);
     std::fill(entry.second.next.begin(), entry.second.next.end(), 0.0f);

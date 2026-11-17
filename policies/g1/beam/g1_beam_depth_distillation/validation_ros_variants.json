@@ -1,0 +1,33 @@
+{
+  "build": "colcon legged_rl_deploy successful",
+  "ctest": {
+    "temporal_contract": "passed",
+    "beam_variant_contract": "passed"
+  },
+  "onnx_variants": [
+    "V1",
+    "V2",
+    "V3",
+    "V4"
+  ],
+  "live_depth": {
+    "hz_approx": 50,
+    "matched_raw_normalized_frames": 20
+  },
+  "live_deploy": {
+    "variant": "V2",
+    "controller_state": "HIGH_CONTROLLER",
+    "duration_s": 3,
+    "command": [
+      0,
+      0,
+      0
+    ],
+    "supported": true,
+    "policy_output_valid": true,
+    "last_fault": "",
+    "ros_domain": 47,
+    "network_interface": "lo"
+  },
+  "scope": "ROS integration smoke test; no rerun of the 400-trial walking benchmark"
+}

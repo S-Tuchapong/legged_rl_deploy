@@ -132,6 +132,8 @@ struct PolicySlotContractTest {
 
     auto depth_cfg = YAML::LoadFile(root +
         "policies/g1/beam/g1_beam_depth_distillation/config.yaml")["policy"];
+    // This regression covers the legacy wrapper, independent of the selected deployment model.
+    depth_cfg["model_path"] = "src/legged_rl_deploy/policies/g1/beam/g1_beam_depth_distillation/policy.onnx";
     auto depth_runner = makePolicyRunner("ort");
     depth_runner->load(std::string(workspace) + "/" +
         depth_cfg["model_path"].as<std::string>(), depth_cfg);

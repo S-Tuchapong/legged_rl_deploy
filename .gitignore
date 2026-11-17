@@ -4,3 +4,12 @@ __pycache__/
 
 # Original training run (logs/debug checkpoints); deployment copy lives in policies/.
 /fullbody_depth/
+
+# Generated experiments: retain Markdown reports, keep raw artifacts local.
+/experiments/**
+!/experiments/**/
+!/experiments/**/*.md
+
+# Local build/runtime logs.
+/log/
+/logs/

@@ -1,0 +1,58 @@
+[
+  {
+    "file": "V1-Visual_before_recovery_model_11000.onnx",
+    "source": "/inspire/qb-ilm2/project/leverage-robot/ky26216/pro/G1Beam/logs/rsl_rl/g1_depth_distillation/v1_visual/2026-11-16_09-56-20_v1_v2_512env_2gpu_20261116_094937_V1-Visual_seed42/model_11000.pt",
+    "source_sha256": "f2281acc2540da31b31c8e428072686f88cb9cbedd232e72f3aa39026ce9bfc9",
+    "onnx_sha256": "bca6fc28e36842a3741a7fc5a1d9317b0d357faa5823730833db426599c58240",
+    "variant": "v1_visual",
+    "updates": 11000,
+    "hidden_dim": 64,
+    "max_absolute_error_action_hidden": [
+      1.9073486328125e-06,
+      1.341104507446289e-06
+    ],
+    "validation": "onnx.checker + ONNX ReferenceEvaluator, 8 recurrent steps with resets, rtol=1e-4 atol=1e-5"
+  },
+  {
+    "file": "V2-Memory_before_recovery_model_11000.onnx",
+    "source": "/inspire/qb-ilm2/project/leverage-robot/ky26216/pro/G1Beam/logs/rsl_rl/g1_depth_distillation/v2_memory/2026-11-16_09-56-19_v1_v2_512env_2gpu_20261116_094937_V2-Memory_seed42/model_11000.pt",
+    "source_sha256": "19554554c1adc0ca72fb3686138ed960ece1c62b876fa4cc19072447df70e6b8",
+    "onnx_sha256": "62da2bd6d05618b5a665aa1d2a31b44079dc3e9df390aefbf77b9f2c54cdaca3",
+    "variant": "v2_memory",
+    "updates": 11000,
+    "hidden_dim": 128,
+    "max_absolute_error_action_hidden": [
+      2.384185791015625e-06,
+      1.7285346984863281e-06
+    ],
+    "validation": "onnx.checker + ONNX ReferenceEvaluator, 8 recurrent steps with resets, rtol=1e-4 atol=1e-5"
+  },
+  {
+    "file": "V3-Actor_before_recovery_model_8000.onnx",
+    "source": "/inspire/qb-ilm2/project/leverage-robot/ky26216/pro/G1Beam/logs/rsl_rl/g1_depth_distillation/v3_actor/2026-11-16_10-12-03_v3_v4_1024env_1gpu_20261116_100522_V3-Actor_seed42/model_8000.pt",
+    "source_sha256": "722fb50032473e52e26db92fb9cc86f231d6ead7845de86d8f88082bb951c415",
+    "onnx_sha256": "981d6fb2f7cb4dc280ccace68002e6e820003922718d1901b0a375854482f572",
+    "variant": "v3_actor",
+    "updates": 8000,
+    "hidden_dim": 128,
+    "max_absolute_error_action_hidden": [
+      1.430511474609375e-06,
+      8.344650268554688e-07
+    ],
+    "validation": "onnx.checker + ONNX ReferenceEvaluator, 8 recurrent steps with resets, rtol=1e-4 atol=1e-5"
+  },
+  {
+    "file": "V4-DepthDR_before_recovery_model_8000.onnx",
+    "source": "/inspire/qb-ilm2/project/leverage-robot/ky26216/pro/G1Beam/logs/rsl_rl/g1_depth_distillation/v4_depth_dr/2026-11-16_10-12-03_v3_v4_1024env_1gpu_20261116_100522_V4-DepthDR_seed42/model_8000.pt",
+    "source_sha256": "31883600fc6da289ad97c1f70e7519b37fca552c14020d2d09380f888e6f6cc9",
+    "onnx_sha256": "389982620aee73e24e9ab61cb6acc0b06d92c4415eb94a28433211dd063147fa",
+    "variant": "v4_depth_dr",
+    "updates": 8000,
+    "hidden_dim": 64,
+    "max_absolute_error_action_hidden": [
+      2.86102294921875e-06,
+      1.2516975402832031e-06
+    ],
+    "validation": "onnx.checker + ONNX ReferenceEvaluator, 8 recurrent steps with resets, rtol=1e-4 atol=1e-5"
+  }
+]

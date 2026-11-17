@@ -1,0 +1,14 @@
+{
+  "file": "V3-Actor_before_recovery_model_8000.onnx",
+  "source": "/inspire/qb-ilm2/project/leverage-robot/ky26216/pro/G1Beam/logs/rsl_rl/g1_depth_distillation/v3_actor/2026-11-16_10-12-03_v3_v4_1024env_1gpu_20261116_100522_V3-Actor_seed42/model_8000.pt",
+  "source_sha256": "722fb50032473e52e26db92fb9cc86f231d6ead7845de86d8f88082bb951c415",
+  "onnx_sha256": "981d6fb2f7cb4dc280ccace68002e6e820003922718d1901b0a375854482f572",
+  "variant": "v3_actor",
+  "updates": 8000,
+  "hidden_dim": 128,
+  "max_absolute_error_action_hidden": [
+    1.430511474609375e-06,
+    8.344650268554688e-07
+  ],
+  "validation": "onnx.checker + ONNX ReferenceEvaluator, 8 recurrent steps with resets, rtol=1e-4 atol=1e-5"
+}

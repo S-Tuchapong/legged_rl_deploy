@@ -30,9 +30,9 @@ depth_camera:
     depth_topic: /g1_sim/camera/depth/image_rect_raw
     camera_info_topic: /g1_sim/camera/depth/camera_info
   preview:
-    topic: /g1_sim/beam_depth/depth_m
-    near_m: 0.3
-    far_m: 3.0
+    topic: /g1_sim/beam_depth/normalized
+    near_m: 0.0
+    far_m: 1.0
   enabled_geom_groups:
   - 0
   - 1

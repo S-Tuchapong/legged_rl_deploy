@@ -20,9 +20,18 @@ public:
                       const YAML::Node& config,
                       const std::vector<int64_t>& tensor_shape);
 
+  struct Timing {
+    float fresh = 0.0f;
+    float age = 0.0f;
+    int64_t stamp_ns = 0;
+  };
   void read(std::vector<float>& destination) const override;
+  Timing readWithTiming(std::vector<float>& destination) const;
+  void commitFrame(int64_t stamp_ns);
+  void resetTiming();
 
 private:
+  Timing readSnapshot(std::vector<float>& destination, bool require_timestamp) const;
   void callback(const sensor_msgs::msg::Image& message);
   void logStatistics();
 
@@ -41,6 +50,7 @@ private:
   std::vector<float> latest_;
   std::chrono::steady_clock::time_point received_at_{};
   int64_t latest_header_stamp_ns_ = 0;
+  int64_t consumed_stamp_ns_ = 0;
   bool received_ = false;
   std::string error_;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;

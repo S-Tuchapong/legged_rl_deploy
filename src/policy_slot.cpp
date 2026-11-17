@@ -202,6 +202,9 @@ void PolicySlot::reset(const LeggedState& state) {
   for (auto& hist : term_hist_) hist.clear();
   has_valid_output_ = false;
   policy_runner_->reset();
+  for (auto& external : external_inputs_) {
+    if (auto* image = dynamic_cast<RosImageTensorInput*>(external.second.get())) image->resetTiming();
+  }
 
   if (output_buf_.size() != output_dim_) {
     output_buf_.assign(output_dim_, 0.0f);
@@ -552,6 +555,11 @@ void PolicySlot::initExternalInputs() {
       runtime_inputs_.push_back({input.source, input_buf_.data(), input_buf_.size()});
       continue;
     }
+    if (input.source.rfind("image_fresh.", 0) == 0 || input.source.rfind("image_age.", 0) == 0) {
+      auto inserted = external_input_buffers_.emplace(input.source, std::vector<float>(1, 0.0f));
+      runtime_inputs_.push_back({input.source, inserted.first->second.data(), 1});
+      continue;
+    }
     constexpr const char* prefix = "external.";
     if (input.source.rfind(prefix, 0) != 0) {
       throw std::runtime_error("[PolicySlot:" + name_ +
@@ -582,6 +590,16 @@ void PolicySlot::initExternalInputs() {
     external_inputs_.emplace(input.source, std::move(external));
     runtime_inputs_.push_back(
         {input.source, inserted.first->second.data(), inserted.first->second.size()});
+  }
+
+  // Resolve image metadata after all image bindings have been constructed.
+  for (const auto& input : policy_runner_->runtimeInputSpecs()) {
+    if (input.source.rfind("image_fresh.", 0) != 0 && input.source.rfind("image_age.", 0) != 0) continue;
+    const std::string image_source = "external." + input.source.substr(input.source.find('.') + 1);
+    const auto image = external_inputs_.find(image_source);
+    if (image == external_inputs_.end() || !dynamic_cast<RosImageTensorInput*>(image->second.get())) {
+      throw std::runtime_error(input.source + " must reference a bound ros_image input");
+    }
   }
 
   if (configs) {
@@ -928,8 +946,20 @@ void PolicySlot::updatePolicy(const LeggedState& state,
   }
   pushTermHistory();
 
+  std::vector<std::pair<RosImageTensorInput*, int64_t>> consumed_frames;
   for (auto& external : external_inputs_) {
-    external.second->read(external_input_buffers_.at(external.first));
+    const std::string name = external.first.substr(std::string("external.").size());
+    auto fresh = external_input_buffers_.find("image_fresh." + name);
+    auto age = external_input_buffers_.find("image_age." + name);
+    if (fresh != external_input_buffers_.end() || age != external_input_buffers_.end()) {
+      auto* image = dynamic_cast<RosImageTensorInput*>(external.second.get());
+      const auto timing = image->readWithTiming(external_input_buffers_.at(external.first));
+      if (fresh != external_input_buffers_.end()) fresh->second[0] = timing.fresh;
+      if (age != external_input_buffers_.end()) age->second[0] = timing.age;
+      consumed_frames.emplace_back(image, timing.stamp_ns);
+    } else {
+      external.second->read(external_input_buffers_.at(external.first));
+    }
   }
   for (auto& input : runtime_inputs_) {
     if (input.source == "observations") {
@@ -941,6 +971,7 @@ void PolicySlot::updatePolicy(const LeggedState& state,
     }
   }
   policy_runner_->infer(runtime_inputs_, raw_output_.data());
+  for (const auto& frame : consumed_frames) frame.first->commitFrame(frame.second);
 
   output_buf_ = raw_output_;
   // Opt-in: previous action is clipped raw action, before scale/offset.

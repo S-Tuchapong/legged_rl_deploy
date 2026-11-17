@@ -1,0 +1,44 @@
+# Shared clean-depth input for V1--V4; preserves capture timestamps.
+depth_image_preprocessor_node:
+  ros__parameters:
+    input:
+      topic: /g1_sim/camera/depth/image_rect_raw
+      width: 424
+      height: 240
+      depth_scale_16uc1: 0.001
+      camera_info:
+        topic: /g1_sim/camera/depth/camera_info
+        intrinsics:
+        - 215.1071014404295
+        - 215.1071014404295
+        - 212.0
+        - 120.0
+        intrinsics_atol: 0.001
+        distortion_model: plumb_bob
+        distortion:
+        - 0.0
+        - 0.0
+        - 0.0
+        - 0.0
+        - 0.0
+        distortion_atol: 1.0e-09
+    output:
+      topic: /g1_sim/beam_depth/normalized
+    process_order:
+    - replace_invalid
+    - clip
+    - resize_nearest
+    - affine
+    replace_invalid:
+      valid_min: 0.0
+      valid_min_inclusive: false
+      value: 6.0
+    clip:
+      min: 0.0
+      max: 6.0
+    resize_nearest:
+      width: 212
+      height: 120
+    affine:
+      scale: 0.16666666666666666
+      offset: 0.0

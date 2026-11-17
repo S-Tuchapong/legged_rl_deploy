@@ -1,21 +1,38 @@
 {
   "version": "2.0.0",
   "inputs": [
+    {
+      "id": "G1BeamVariant",
+      "type": "pickString",
+      "description": "G1 depth policy variant",
+      "options": ["V1", "V2", "V3", "V4"],
+      "default": "V2"
+    },
 {
   "id": "G1TrainingTerrain",
   "type": "pickString",
-  "description": "Training terrain level: 0 = 0.60 m wide, 9 = 0.18 m wide; height above ground = 0.55 m",
+  "description": "Training terrain level (half levels are midpoint widths): 0 = 0.60 m wide, 9 = 0.18 m wide; custom = 0.20 m wide; height above ground = 0.55 m",
   "options": [
     "scene_depth_training_level_0.xml",
+    "scene_depth_training_level_0p5.xml",
     "scene_depth_training_level_1.xml",
+    "scene_depth_training_level_1p5.xml",
     "scene_depth_training_level_2.xml",
+    "scene_depth_training_level_2p5.xml",
     "scene_depth_training_level_3.xml",
+    "scene_depth_training_level_3p5.xml",
     "scene_depth_training_level_4.xml",
+    "scene_depth_training_level_4p5.xml",
     "scene_depth_training_level_5.xml",
+    "scene_depth_training_level_5p5.xml",
     "scene_depth_training_level_6.xml",
+    "scene_depth_training_level_6p5.xml",
     "scene_depth_training_level_7.xml",
+    "scene_depth_training_level_7p5.xml",
     "scene_depth_training_level_8.xml",
-    "scene_depth_training_level_9.xml"
+    "scene_depth_training_level_8p5.xml",
+    "scene_depth_training_level_9.xml",
+    "scene_depth_training_width_20cm.xml"
   ],
   "default": "scene_depth_training_level_0.xml"
 },
@@ -159,7 +176,7 @@
     "depth_image_preprocessor_node.py",
     "--ros-args",
     "--params-file",
-    "${workspaceFolder}/policies/g1/beam/g1_beam_depth_distillation/depth_image_preprocessor_sim.yaml"
+    "${workspaceFolder}/policies/g1/beam/g1_beam_depth_distillation/depth_image_preprocessor_variants_sim.yaml"
   ],
   "options": {
     "cwd": "${workspaceFolder}"
@@ -192,7 +209,7 @@
     "legged_rl_deploy",
     "legged_rl_deploy_node",
     "lo",
-    "${workspaceFolder}/policies/g1/beam/g1_beam_depth_distillation/config_sim.yaml"
+    "${workspaceFolder}/policies/g1/beam/g1_beam_depth_distillation/${input:G1BeamVariant}/config_sim.yaml"
   ],
   "options": {
     "cwd": "${workspaceFolder}"
@@ -214,7 +231,7 @@
     "ros2",
     "topic",
     "hz",
-    "/g1_sim/beam_depth/depth_m"
+    "/g1_sim/beam_depth/normalized"
   ],
   "options": {
     "cwd": "${workspaceFolder}"

@@ -1,0 +1,14 @@
+{
+  "file": "V2-Memory_before_recovery_model_11000.onnx",
+  "source": "/inspire/qb-ilm2/project/leverage-robot/ky26216/pro/G1Beam/logs/rsl_rl/g1_depth_distillation/v2_memory/2026-11-16_09-56-19_v1_v2_512env_2gpu_20261116_094937_V2-Memory_seed42/model_11000.pt",
+  "source_sha256": "19554554c1adc0ca72fb3686138ed960ece1c62b876fa4cc19072447df70e6b8",
+  "onnx_sha256": "62da2bd6d05618b5a665aa1d2a31b44079dc3e9df390aefbf77b9f2c54cdaca3",
+  "variant": "v2_memory",
+  "updates": 11000,
+  "hidden_dim": 128,
+  "max_absolute_error_action_hidden": [
+    2.384185791015625e-06,
+    1.7285346984863281e-06
+  ],
+  "validation": "onnx.checker + ONNX ReferenceEvaluator, 8 recurrent steps with resets, rtol=1e-4 atol=1e-5"
+}

@@ -227,8 +227,12 @@ if(BUILD_POLICY_CONTRACT_TESTS)
   add_executable(temporal_contract_test tests/temporal_contract_test.cpp)
   target_link_libraries(temporal_contract_test PRIVATE ${PROJECT_NAME})
   add_test(NAME temporal_contract COMMAND temporal_contract_test)
+  add_executable(beam_variant_contract_test tests/beam_variant_contract_test.cpp)
+  target_link_libraries(beam_variant_contract_test PRIVATE ${PROJECT_NAME})
+  add_test(NAME beam_variant_contract COMMAND beam_variant_contract_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/beam_variant_reference.yaml)
   # A sourced install may still contain an older library with a different ABI.
-  set_tests_properties(temporal_contract PROPERTIES
+  set_tests_properties(temporal_contract beam_variant_contract PROPERTIES
     ENVIRONMENT "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:${PROJECT_NAME}>:$ENV{LD_LIBRARY_PATH}")
 endif()
 

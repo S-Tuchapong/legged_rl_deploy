@@ -133,6 +133,27 @@ void RosImageTensorInput::callback(const sensor_msgs::msg::Image& message) {
 }
 
 void RosImageTensorInput::read(std::vector<float>& destination) const {
+  readSnapshot(destination, false);
+}
+
+RosImageTensorInput::Timing RosImageTensorInput::readWithTiming(
+    std::vector<float>& destination) const {
+  return readSnapshot(destination, true);
+}
+
+void RosImageTensorInput::commitFrame(int64_t stamp_ns) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  consumed_stamp_ns_ = stamp_ns;
+}
+
+void RosImageTensorInput::resetTiming() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  consumed_stamp_ns_ = 0;
+}
+
+RosImageTensorInput::Timing RosImageTensorInput::readSnapshot(
+    std::vector<float>& destination, bool require_timestamp) const {
+  Timing timing;
   double policy_image_age_ms = std::numeric_limits<double>::quiet_NaN();
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -148,6 +169,21 @@ void RosImageTensorInput::read(std::vector<float>& destination) const {
       policy_image_age_ms = static_cast<double>(
           clock_->now().nanoseconds() - latest_header_stamp_ns_) * 1.0e-6;
     }
+    if (require_timestamp) {
+      if (latest_header_stamp_ns_ <= 0 || !std::isfinite(policy_image_age_ms) ||
+          policy_image_age_ms < 0.0) {
+        throw std::runtime_error(source_name_ + " invalid/future image stamp; check ROS clocks");
+      }
+      if (policy_image_age_ms * .001 > timeout_.count()) {
+        throw std::runtime_error(source_name_ + " capture timestamp is stale");
+      }
+      if (latest_header_stamp_ns_ < consumed_stamp_ns_) {
+        throw std::runtime_error(source_name_ + " image timestamp moved backwards; reset policy");
+      }
+      timing.fresh = latest_header_stamp_ns_ != consumed_stamp_ns_ ? 1.0f : 0.0f;
+      timing.age = static_cast<float>(policy_image_age_ms * .001);
+      timing.stamp_ns = latest_header_stamp_ns_;
+    }
     destination = latest_;
   }
 
@@ -155,6 +191,7 @@ void RosImageTensorInput::read(std::vector<float>& destination) const {
     std::lock_guard<std::mutex> statistics_lock(statistics_mutex_);
     policy_image_age_ms_.push_back(policy_image_age_ms);
   }
+  return timing;
 }
 
 void RosImageTensorInput::logStatistics() {

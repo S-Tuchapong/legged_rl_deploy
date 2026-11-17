@@ -19,6 +19,6 @@ Run at 50 Hz. Initialize hidden to zeros and reset=True on startup. Maintain the
 
 V4 has the same clean inference interface; training depth randomization is not exported as stochastic preprocessing.
 
-Validation: see onnx_before_recovery_manifest.json. ONNX checker and ONNX ReferenceEvaluator numerical parity are checked against the saved PyTorch model over recurrent steps and reset cases. This is not ONNX Runtime/TensorRT or hardware validation. Confirm target-runtime compatibility and simulated closed-loop behavior before any robot deployment.
+Export validation: see [manifest.json](manifest.json) and the per-variant manifests. ONNX checker and ONNX ReferenceEvaluator numerical parity are checked against the saved PyTorch model over recurrent steps and reset cases. Those export checks are separate from the later ONNX Runtime and ROS integration tests documented in [README_SIM_VARIANTS.md](README_SIM_VARIANTS.md). They are not TensorRT or hardware validation. Confirm target-runtime compatibility and simulated closed-loop behavior before any robot deployment.
 
 Source checkpoints remain unchanged. Export code is export_before_recovery_onnx.py and depends on the G1Beam checkout. No teacher file is needed by the exported ONNX graphs.

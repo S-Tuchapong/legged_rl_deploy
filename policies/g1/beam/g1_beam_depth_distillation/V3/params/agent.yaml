@@ -1,0 +1,30 @@
+seed: 42
+num_steps_per_env: 24
+max_iterations: 20000
+obs_groups:
+  actor: !!python/tuple
+  - actor
+  critic: !!python/tuple
+  - critic
+save_interval: 1000
+experiment_name: g1_depth_distillation/v3_actor
+run_name: v3_v4_1024env_1gpu_20261116_100522_V3-Actor_seed42
+logger: tensorboard
+wandb_project: mjlab
+wandb_tags: !!python/tuple []
+resume: false
+load_run: .*
+load_checkpoint: model_.*.pt
+clip_actions: null
+upload_model: true
+variant: v3_actor
+play_depth_randomization: false
+sequences: 128
+minibatch: 16
+capacity: 16
+burn_in: 4
+epochs: 2
+learning_rate: 0.0003
+loss_mode: raw
+eval_steps: 0
+log_every: 100

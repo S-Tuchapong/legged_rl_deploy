@@ -1,0 +1,48 @@
+{
+  "seed": 42,
+  "num_steps_per_env": 24,
+  "max_iterations": 20000,
+  "obs_groups": {
+    "actor": [
+      "actor"
+    ],
+    "critic": [
+      "critic"
+    ]
+  },
+  "save_interval": 1000,
+  "experiment_name": "g1_depth_distillation/v2_memory",
+  "run_name": "v1_v2_512env_2gpu_20261116_094937_V2-Memory_seed42",
+  "logger": "tensorboard",
+  "wandb_project": "mjlab",
+  "wandb_tags": [],
+  "resume": false,
+  "load_run": ".*",
+  "load_checkpoint": "model_.*.pt",
+  "clip_actions": null,
+  "upload_model": true,
+  "variant": "v2_memory",
+  "play_depth_randomization": false,
+  "sequences": 64,
+  "minibatch": 16,
+  "capacity": 16,
+  "burn_in": 4,
+  "epochs": 2,
+  "learning_rate": 0.0003,
+  "loss_mode": "raw",
+  "eval_steps": 0,
+  "log_every": 100,
+  "teacher_sha": "c53515b8a130d77e808b8b47d91efee895eada78266c901682f6dd764d75117f",
+  "depth_min_m": 0.0,
+  "depth_max_m": 6.0,
+  "depth_variant": {
+    "width": 212,
+    "height": 120,
+    "camera_hz": 50,
+    "go2_visual": true,
+    "hidden_dim": 128,
+    "proprio_window": true,
+    "depth_randomization": false
+  },
+  "depth_pipeline_version": 1
+}

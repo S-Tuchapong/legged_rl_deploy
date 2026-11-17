@@ -13,8 +13,10 @@ void validateTensor(const Ort::TypeInfo& type_info,
                     const IPolicyRunner::TensorSpec& expected,
                     const std::string& context) {
   const auto info = type_info.GetTensorTypeAndShapeInfo();
-  if (info.GetElementType() != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
-    throw std::runtime_error(context + " must be float32");
+  const auto dtype = expected.dtype == "bool" ? ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL
+                                               : ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+  if (info.GetElementType() != dtype) {
+    throw std::runtime_error(context + " dtype does not match config " + expected.dtype);
   }
   const auto actual_shape = info.GetShape();
   const bool shape_matches =
@@ -83,7 +85,16 @@ void OrtPolicyRunner::runBackend(const std::vector<const float*>& inputs,
 
   std::vector<Ort::Value> tensors;
   tensors.reserve(inputs.size());
+  std::vector<std::unique_ptr<bool[]>> boolean_inputs(inputs.size());
   for (size_t i = 0; i < inputs.size(); ++i) {
+    if (input_specs[i].dtype == "bool") {
+      boolean_inputs[i] = std::make_unique<bool[]>(input_specs[i].size);
+      for (size_t j = 0; j < input_specs[i].size; ++j) boolean_inputs[i][j] = inputs[i][j] != 0.0f;
+      tensors.push_back(Ort::Value::CreateTensor<bool>(
+          memory_, boolean_inputs[i].get(), input_specs[i].size,
+          input_specs[i].shape.data(), input_specs[i].shape.size()));
+      continue;
+    }
     tensors.push_back(Ort::Value::CreateTensor<float>(
         memory_, const_cast<float*>(inputs[i]), input_specs[i].size,
         input_specs[i].shape.data(), input_specs[i].shape.size()));

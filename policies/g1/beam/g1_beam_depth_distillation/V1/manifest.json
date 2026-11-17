@@ -1,0 +1,14 @@
+{
+  "file": "V1-Visual_before_recovery_model_11000.onnx",
+  "source": "/inspire/qb-ilm2/project/leverage-robot/ky26216/pro/G1Beam/logs/rsl_rl/g1_depth_distillation/v1_visual/2026-11-16_09-56-20_v1_v2_512env_2gpu_20261116_094937_V1-Visual_seed42/model_11000.pt",
+  "source_sha256": "f2281acc2540da31b31c8e428072686f88cb9cbedd232e72f3aa39026ce9bfc9",
+  "onnx_sha256": "bca6fc28e36842a3741a7fc5a1d9317b0d357faa5823730833db426599c58240",
+  "variant": "v1_visual",
+  "updates": 11000,
+  "hidden_dim": 64,
+  "max_absolute_error_action_hidden": [
+    1.9073486328125e-06,
+    1.341104507446289e-06
+  ],
+  "validation": "onnx.checker + ONNX ReferenceEvaluator, 8 recurrent steps with resets, rtol=1e-4 atol=1e-5"
+}

@@ -29,6 +29,7 @@ public:
     size_t size = 0;
     std::string binding;
     std::string topic;
+    std::string dtype = "float32";
   };
 
   virtual ~IPolicyRunner() = default;
@@ -81,6 +82,7 @@ private:
   size_t action_output_index_ = 0;
   size_t action_dim_ = 0;
   bool loaded_ = false;
+  float reset_pending_ = 1.0f;
 };
 
 }  // namespace legged_rl_deploy
