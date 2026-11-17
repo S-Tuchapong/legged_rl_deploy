@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export the pinned full-body student and verify recurrent ONNX parity on CPU."""
+"""Export model_7000 with requested 0--6 m preprocessing and verify ONNX parity."""
 import hashlib
 import json
 import math
@@ -11,11 +11,19 @@ import onnxruntime as ort
 import torch
 from torch import nn
 
-from training_core import Student, Teacher, corrupt_axial
+from training_core import Student, Teacher
 
 ROOT = Path(__file__).resolve().parent
 INPUTS = ['actor', 'depth', 'hidden_in', 'visual_cache_in', 'hold_in']
 OUTPUTS = ['actions', 'hidden_out', 'visual_cache_out', 'hold_out']
+DEPTH_MAX_M = 6.0
+DEPTH_CONTRACT = 'axial metres; nonfinite/nonpositive -> 6 m; clip [0,6]; normalize z/6'
+
+
+def normalize_depth(depth):
+    valid = torch.isfinite(depth) & (depth > 0)
+    z = torch.where(valid, depth, torch.full_like(depth, DEPTH_MAX_M))
+    return z.clamp(0.0, DEPTH_MAX_M) / DEPTH_MAX_M
 
 
 class ExportPool(nn.Module):
@@ -36,9 +44,9 @@ class Deployment(nn.Module):
         self.student.visual[4] = ExportPool()
 
     def forward(self, actor, depth, hidden, visual_cache, hold):
-        # RealSense supplies axial metres, whereas MuJoCo supplied ray ranges.
-        z = torch.where(depth > 0, depth, torch.full_like(depth, 3.0))
-        normalized = (z.clamp(0.3, 3.0) - 0.3) / 2.7
+        # Input is axial metres; normalization happens once, inside this wrapper.
+        normalized = normalize_depth(depth)
+
         current = self.student.visual(normalized)
         visual = torch.where(hold.reshape(1, 1) < 0.5, current, visual_cache)
         window = torch.cat([
@@ -74,7 +82,9 @@ def main():
     onnx.helper.set_model_props(graph, {
         'checkpoint_sha256': hashlib.sha256((ROOT/'model_7000.pt').read_bytes()).hexdigest(),
         'training_core_sha256':source_sha,
-        'depth_contract':'axial metres, zero -> far, clip [0.3,3], normalize (z-0.3)/2.7',
+        'depth_contract': DEPTH_CONTRACT,
+        'checkpoint_training_depth_contract': 'clip [0.3,3], normalize (z-0.3)/2.7',
+        'preprocessing_override': 'requested 0--6 m; not original training preprocessing',
         'policy_dt':'0.02', 'depth_dt':'0.04', 'history':'61 term-major frames',
     })
     onnx.checker.check_model(graph)
@@ -83,7 +93,13 @@ def main():
     state = [np.zeros((1,64),np.float32), np.zeros((1,64),np.float32), np.zeros(1,np.float32)]
     hidden = torch.zeros(1,64)
     max_error = 0.
-    # Cover recurrent rollouts, zeros/no-hit, clipping endpoints and restart.
+    # Verify the requested map independently, including invalid/no-hit values.
+    edges = torch.tensor([float('nan'), float('inf'), -float('inf'), -1., 0., .1, .3, 3., 6., 8.])
+    np.testing.assert_allclose(normalize_depth(edges).numpy(),
+        [1., 1., 1., 1., 1., .1/6, .3/6, .5, 1., 1.], rtol=1e-6)
+    # The reference Student receives the requested normalization, not the old
+    # training corrupt_axial transform. This tests export parity under an override.
+    # Cover recurrent rollouts, invalid/no-hit, clipping endpoints and restart.
     with torch.no_grad():
         for tick in range(80):
             reset = tick in (0,39)
@@ -92,11 +108,15 @@ def main():
                 hidden.zero_()
                 local_tick = 0
             history = torch.randn(1,5978)*0.2
-            depth = torch.rand(1,1,240,424)*5
+            depth = torch.rand(1,1,240,424)*8
             depth[:,:,:,::7] = 0
             if tick == 5: depth.zero_()
+            if tick == 6: depth[:, :, :, :len(edges)] = edges
             fresh = local_tick % 2 == 0
-            if fresh: cached = corrupt_axial(depth)
+            if fresh:
+                z = depth.numpy()
+                z = np.where(np.isfinite(z) & (z > 0), z, 6.0)
+                cached = torch.from_numpy(np.clip(z, 0.0, 6.0) / 6.0)
             expected, hidden = reference(history,cached,torch.tensor([float(fresh)]),
                 torch.tensor([0. if fresh else .02]),hidden,torch.tensor([reset]))
             actual = session.run(OUTPUTS, dict(zip(INPUTS,[history.numpy(),depth.numpy(),*state])))
@@ -108,6 +128,10 @@ def main():
             state = actual[1:]
             local_tick += 1
     report = {'checkpoint_updates':checkpoint['completed_updates'], 'training_core_sha256':source_sha,
+              'depth_contract': DEPTH_CONTRACT,
+              'training_depth_range_m': [0.3, 3.0], 'deployment_depth_range_m': [0.0, 6.0],
+              'validation_scope': 'ONNX/PyTorch parity with requested preprocessing override; not closed-loop validation',
+              'normalization_edge_cases': len(edges),
               'onnx_parity_steps':80,'max_absolute_error':max_error,
               'inputs':{x.name:x.shape for x in session.get_inputs()},
               'outputs':{x.name:x.shape for x in session.get_outputs()}}

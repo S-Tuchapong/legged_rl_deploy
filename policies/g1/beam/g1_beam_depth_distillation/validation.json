@@ -1,8 +1,19 @@
 {
   "checkpoint_updates": 7000,
   "training_core_sha256": "277cdcaaeaa5d3e539033c8e24da4f5c3eaebc6d1979bd2df964bae93d4db29f",
+  "depth_contract": "axial metres; nonfinite/nonpositive -> 6 m; clip [0,6]; normalize z/6",
+  "training_depth_range_m": [
+    0.3,
+    3.0
+  ],
+  "deployment_depth_range_m": [
+    0.0,
+    6.0
+  ],
+  "validation_scope": "ONNX/PyTorch parity with requested preprocessing override; not closed-loop validation",
+  "normalization_edge_cases": 10,
   "onnx_parity_steps": 80,
-  "max_absolute_error": 4.291534423828125e-06,
+  "max_absolute_error": 5.7220458984375e-06,
   "inputs": {
     "actor": [
       1,
